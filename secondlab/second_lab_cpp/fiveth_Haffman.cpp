@@ -16,29 +16,24 @@ struct ListNode {
 };
 
 void insertSorted(ListNode*& head, Node* treeNode) {
-    ListNode* newNode = new ListNode;
-    newNode->treeNode = treeNode;
-    newNode->next = nullptr;
-
+    ListNode* newNode = new ListNode{treeNode, nullptr};
     if (!head || head->treeNode->freq >= treeNode->freq) {
         newNode->next = head;
         head = newNode;
         return;
     }
-
     ListNode* curr = head;
-    while (curr->next && curr->next->treeNode->freq < treeNode->freq) {
+    while (curr->next && curr->next->treeNode->freq < treeNode->freq)
         curr = curr->next;
-    }
     newNode->next = curr->next;
     curr->next = newNode;
 }
 
 ListNode* popMin(ListNode*& head) {
     if (!head) return nullptr;
-    ListNode* temp = head;
+    ListNode* t = head;
     head = head->next;
-    return temp;
+    return t;
 }
 
 Node* buildHuffmanTree(const string& text) {
@@ -46,30 +41,28 @@ Node* buildHuffmanTree(const string& text) {
     for (char c : text) freq[(unsigned char)c]++;
 
     ListNode* head = nullptr;
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < 256; ++i) {
         if (freq[i] > 0) {
-            Node* n = new Node;
-            n->ch = (char)i;
-            n->freq = freq[i];
-            n->left = nullptr;
-            n->right = nullptr;
+            Node* n = new Node{(char)i, freq[i], nullptr, nullptr};
             insertSorted(head, n);
         }
     }
 
+    if (head && !head->next) {
+        Node* leaf = head->treeNode;
+        delete head;
+        Node* root = new Node{'\0', leaf->freq, leaf, nullptr}; 
+        return root;
+    }
+
     while (head && head->next) {
-        ListNode* leftList = popMin(head);
-        ListNode* rightList = popMin(head);
-
-        Node* parent = new Node;
-        parent->ch = '\0';
-        parent->freq = leftList->treeNode->freq + rightList->treeNode->freq;
-        parent->left = leftList->treeNode;
-        parent->right = rightList->treeNode;
-
-        delete leftList;
-        delete rightList;
-
+        ListNode* l = popMin(head);
+        ListNode* r = popMin(head);
+        Node* parent = new Node{'\0',
+                                l->treeNode->freq + r->treeNode->freq,
+                                l->treeNode, r->treeNode};
+        delete l;
+        delete r;
         insertSorted(head, parent);
     }
 
@@ -79,29 +72,36 @@ Node* buildHuffmanTree(const string& text) {
     return root;
 }
 
-void generateCodes(Node* root, string code, string chars[], string codes[]) {
+void generateCodes(Node* root, const string& code, string codes[], bool hasCode[]) {
     if (!root) return;
     if (!root->left && !root->right) {
-        chars[(unsigned char)root->ch] = root->ch;
         codes[(unsigned char)root->ch] = code;
+        hasCode[(unsigned char)root->ch] = true;
+        return;
     }
-    generateCodes(root->left, code + "0", chars, codes);
-    generateCodes(root->right, code + "1", chars, codes);
+    generateCodes(root->left, code + "0", codes, hasCode);
+    generateCodes(root->right, code + "1", codes, hasCode);
 }
 
 string encode(const string& text, string codes[]) {
-    string result = "";
+    string result;
     for (char c : text) result += codes[(unsigned char)c];
     return result;
 }
 
 string decode(Node* root, const string& encoded) {
-    string result = "";
+    if (!root) return "";
+    if (!root->left && !root->right) {
+        string res;
+        for (size_t i = 0; i < encoded.size(); ++i) res += root->ch;
+        return res;
+    }
+    string result;
     Node* curr = root;
     for (char bit : encoded) {
-        if (bit == '0') curr = curr->left;
-        else curr = curr->right;
-
+        if (!curr) return "";
+        curr = (bit == '0') ? curr->left : curr->right;
+        if (!curr) return "";
         if (!curr->left && !curr->right) {
             result += curr->ch;
             curr = root;
@@ -118,34 +118,34 @@ void clearTree(Node* root) {
 }
 
 int main() {
-    string text;
     cout << "Введите текст для кодирования: ";
+    string text;
     getline(cin, text);
 
     if (text.empty()) {
-        cout << "Error: empty text" << endl;
+        cout << "Error: empty text\n";
         return 1;
     }
 
     Node* root = buildHuffmanTree(text);
     if (!root) return 1;
 
-    string chars[256];
     string codes[256];
-    generateCodes(root, "", chars, codes);
+    bool hasCode[256] = {false};
+    generateCodes(root, "", codes, hasCode);
 
     cout << "\nТаблица кодов:\n";
-    for (int i = 0; i < 256; i++) {
-        if (!codes[i].empty()) {
-            cout << chars[i] << ": " << codes[i] << endl;
+    for (int i = 0; i < 256; ++i) {
+        if (hasCode[i]) {
+            cout << (char)i << ": " << (codes[i].empty() ? "<empty>" : codes[i]) << "\n";
         }
     }
 
     string encoded = encode(text, codes);
-    cout << "\nЗакодированная строка: " << encoded << endl;
+    cout << "\nЗакодированная строка: " << encoded << "\n";
 
     string decoded = decode(root, encoded);
-    cout << "Декодированная строка: " << decoded << endl;
+    cout << "Декодированная строка: " << decoded << "\n";
 
     clearTree(root);
     return 0;

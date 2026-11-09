@@ -66,26 +66,26 @@ bool evaluateExpression(const string& expr, int& result) {
         if (expr[i] == ' ') continue;
 
         if (isdigit(expr[i])) {
-        int num = 0;
-        while (i < expr.length() && isdigit(expr[i])) {
-            num = num * 10 + (expr[i] - '0');
-            i++;
-        }
-        i--;
-        
-        if (num != 0 && num != 1) {
-            cout << "Error: operands must be 0 or 1" << endl;
-            clearStack(values); clearStack(ops);
-            return false;
-        }
-        
-        if (!expectOperand) {
-            cout << "Error: missing operator between operands" << endl;
-            clearStack(values); clearStack(ops);
-            return false;
-        }
-        push(values, num);
-        expectOperand = false;
+            int num = 0;
+            while (i < expr.length() && isdigit(expr[i])) {
+                num = num * 10 + (expr[i] - '0');
+                i++;
+            }
+            i--;
+            
+            if (num != 0 && num != 1) {
+                cout << "Error: operands must be 0 or 1" << endl;
+                clearStack(values); clearStack(ops);
+                return false;
+            }
+            
+            if (!expectOperand) {
+                cout << "Error: missing operator between operands" << endl;
+                clearStack(values); clearStack(ops);
+                return false;
+            }
+            push(values, num);
+            expectOperand = false;
         }
         else if (expr[i] == '(') {
             if (!expectOperand) {
@@ -103,13 +103,22 @@ bool evaluateExpression(const string& expr, int& result) {
             }
             while (!isEmpty(ops) && top(ops) != '(') {
                 char op = pop(ops);
-                if (isEmpty(values) || values.topNode->next == nullptr) {
-                    cout << "Error: not enough operands" << endl;
-                    clearStack(values); clearStack(ops);
-                    return false;
+                if (op == '!') {
+                    if (isEmpty(values)) {
+                        cout << "Error: not enough operands" << endl;
+                        clearStack(values); clearStack(ops);
+                        return false;
+                    }
+                    push(values, applyOp(op, pop(values)));
+                } else {
+                    if (isEmpty(values) || values.topNode->next == nullptr) {
+                        cout << "Error: not enough operands" << endl;
+                        clearStack(values); clearStack(ops);
+                        return false;
+                    }
+                    int val2 = pop(values), val1 = pop(values);
+                    push(values, applyOp(op, val1, val2));
                 }
-                int val2 = pop(values), val1 = pop(values);
-                push(values, applyOp(op, val1, val2));
             }
             if (isEmpty(ops)) {
                 cout << "Error: mismatched parentheses" << endl;
@@ -117,30 +126,22 @@ bool evaluateExpression(const string& expr, int& result) {
                 return false;
             }
             pop(ops);
+            
+            if (!isEmpty(ops) && top(ops) == '!') {
+                pop(ops);
+                if (isEmpty(values)) {
+                    cout << "Error: not enough operands for '!'" << endl;
+                    clearStack(values); clearStack(ops);
+                    return false;
+                }
+                push(values, applyOp('!', pop(values)));
+            }
+            
             expectOperand = false;
         } 
         else if (expr[i] == '&' || expr[i] == '|' || expr[i] == '^') {
             if (expectOperand) { 
                 cout << "Error: missing operand before operator" << endl;
-                clearStack(values); clearStack(ops);
-                return false;
-            }
-            while (!isEmpty(ops) && precedence(top(ops)) >= precedence(expr[i])) {
-                char op = pop(ops);
-                if (isEmpty(values) || values.topNode->next == nullptr) {
-                    cout << "Error: not enough operands" << endl;
-                    clearStack(values); clearStack(ops);
-                    return false;
-                }
-                int val2 = pop(values), val1 = pop(values);
-                push(values, applyOp(op, val1, val2));
-            }
-            push(ops, expr[i]);
-            expectOperand = true;
-        } 
-        else if (expr[i] == '!') {
-            if (!expectOperand) {
-                cout << "Error: missing operator before '!'" << endl;
                 clearStack(values); clearStack(ops);
                 return false;
             }
@@ -162,6 +163,15 @@ bool evaluateExpression(const string& expr, int& result) {
                     int val2 = pop(values), val1 = pop(values);
                     push(values, applyOp(op, val1, val2));
                 }
+            }
+            push(ops, expr[i]);
+            expectOperand = true;
+        } 
+        else if (expr[i] == '!') {
+            if (!expectOperand) {
+                cout << "Error: missing operator before '!'" << endl;
+                clearStack(values); clearStack(ops);
+                return false;
             }
             push(ops, expr[i]);
         } 

@@ -9,11 +9,11 @@ import (
 )
 
 type CacheNode struct {
-	key    string
-	value  int
-	freq   int
-	order  int
-	next   *CacheNode
+	key   string
+	value int
+	freq  int
+	order int
+	next  *CacheNode
 }
 
 type LFUCache struct {
@@ -41,58 +41,54 @@ func (c *LFUCache) removeNode(prev, curr *CacheNode) {
 }
 
 func (c *LFUCache) set(key string, value int) {
-	curr := c.head
-	for curr != nil {
+	
+	for curr := c.head; curr != nil; curr = curr.next {
 		if curr.key == key {
 			curr.value = value
 			curr.freq++
+			c.globalOrder++
+			curr.order = c.globalOrder
 			return
 		}
-		curr = curr.next
 	}
 
 	if c.size >= c.capacity {
 		minNode := c.head
 		var minPrev *CacheNode
-		var p *CacheNode
-		cur := c.head
-
-		for cur != nil {
+		var prev *CacheNode
+		for cur := c.head; cur != nil; cur = cur.next {
 			if cur.freq < minNode.freq ||
 				(cur.freq == minNode.freq && cur.order < minNode.order) {
 				minNode = cur
-				minPrev = p
+				minPrev = prev
 			}
-			p = cur
-			cur = cur.next
+			prev = cur
 		}
 		if minNode != nil {
 			c.removeNode(minPrev, minNode)
 		}
 	}
 
+	c.globalOrder++
 	newNode := &CacheNode{
 		key:   key,
 		value: value,
 		freq:  1,
-		order: c.globalOrder + 1,
+		order: c.globalOrder,
 		next:  c.head,
 	}
-	c.globalOrder++
 	c.head = newNode
 	c.size++
 }
 
 func (c *LFUCache) get(key string) int {
-	curr := c.head
-	for curr != nil {
+	for curr := c.head; curr != nil; curr = curr.next {
 		if curr.key == key {
 			curr.freq++
 			c.globalOrder++
 			curr.order = c.globalOrder
 			return curr.value
 		}
-		curr = curr.next
 	}
 	return -1
 }
@@ -103,11 +99,11 @@ func readInt(reader *bufio.Reader) (int, bool) {
 	if line == "" {
 		return 0, false
 	}
-	val, err := strconv.Atoi(line)
+	v, err := strconv.Atoi(line)
 	if err != nil {
 		return 0, false
 	}
-	return val, true
+	return v, true
 }
 
 func main() {
@@ -128,9 +124,6 @@ func main() {
 		return
 	}
 
-	// Очистка буфера после readInt
-	reader.ReadString('\n')
-
 	fmt.Println("Введите запросы (например: SET 1 10, GET 1):")
 	for i := 0; i < q; i++ {
 		line, _ := reader.ReadString('\n')
@@ -145,30 +138,30 @@ func main() {
 		if len(parts) == 0 {
 			continue
 		}
-		cmd := parts[0]
 
-		if cmd == "SET" {
+		switch parts[0] {
+		case "SET":
 			if len(parts) < 3 {
 				fmt.Println("Error: invalid SET format (expected: SET key value)")
 				return
 			}
-			key := parts[1]
-			value, err := strconv.Atoi(parts[2])
+			v, err := strconv.Atoi(parts[2])
 			if err != nil {
 				fmt.Println("Error: invalid value")
 				return
 			}
-			cache.set(key, value)
+			cache.set(parts[1], v)
 			fmt.Println("OK")
-		} else if cmd == "GET" {
+
+		case "GET":
 			if len(parts) < 2 {
 				fmt.Println("Error: invalid GET format (expected: GET key)")
 				return
 			}
-			key := parts[1]
-			fmt.Println(cache.get(key))
-		} else {
-			fmt.Printf("Error: unknown command '%s'\n", cmd)
+			fmt.Println(cache.get(parts[1]))
+
+		default:
+			fmt.Printf("Error: unknown command '%s'\n", parts[0])
 		}
 	}
 }

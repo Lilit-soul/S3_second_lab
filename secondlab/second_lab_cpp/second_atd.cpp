@@ -5,7 +5,6 @@
 
 using namespace std;
 
-// Хеш-таблица для O(1)
 struct HashNode {
     string key;
     HashNode* next;
@@ -17,7 +16,6 @@ struct HashSet {
     int count;
 };
 
-// Функция хеширования
 int hashFunc(const string& key, int size) {
     int h = 0;
     for (char c : key) h = (h * 31 + c) % size;
@@ -31,7 +29,6 @@ void initSet(HashSet& s, int size = 1000) {
     for (int i = 0; i < size; i++) s.table[i] = nullptr;
 }
 
-// Добавление 
 void add(HashSet& s, const string& key) {
     if (key.empty()) return;
     int idx = hashFunc(key, s.size);
@@ -49,7 +46,6 @@ void add(HashSet& s, const string& key) {
     s.count++;
 }
 
-// Удаление 
 bool del(HashSet& s, const string& key) {
     int idx = hashFunc(key, s.size);
     HashNode* curr = s.table[idx];
@@ -61,15 +57,14 @@ bool del(HashSet& s, const string& key) {
             else s.table[idx] = curr->next;
             delete curr;
             s.count--;
-            return true; // Элемент найден и удален
+            return true;
         }
         prev = curr;
         curr = curr->next;
     }
-    return false; // Элемент не найден
+    return false;
 }
 
-// Проверка 
 bool contains(HashSet& s, const string& key) {
     int idx = hashFunc(key, s.size);
     HashNode* curr = s.table[idx];
@@ -80,7 +75,6 @@ bool contains(HashSet& s, const string& key) {
     return false;
 }
 
-// Очистка памяти
 void clearSet(HashSet& s) {
     for (int i = 0; i < s.size; i++) {
         HashNode* curr = s.table[i];
@@ -93,7 +87,6 @@ void clearSet(HashSet& s) {
     delete[] s.table;
 }
 
-// Загрузка/сохранение
 void loadFromFile(HashSet& s, const string& filename) {
     ifstream file(filename);
     if (!file.is_open()) return;

@@ -12,23 +12,83 @@ type Block struct {
 	w, h int
 }
 
-func sortBlocks(arr []Block) {
-	n := len(arr)
-	for i := 0; i < n-1; i++ {
-		for j := 0; j < n-i-1; j++ {
-			if arr[j].w < arr[j+1].w || (arr[j].w == arr[j+1].w && arr[j].h < arr[j+1].h) {
-				arr[j], arr[j+1] = arr[j+1], arr[j]
-			}
-		}
+type BlockArray struct {
+	data []Block
+	size int
+	cap  int
+}
+
+func newBlockArray(initialCap int) *BlockArray {
+	if initialCap <= 0 {
+		initialCap = 1
+	}
+	return &BlockArray{
+		data: make([]Block, initialCap),
+		size: 0,
+		cap:  initialCap,
 	}
 }
 
-func readBlocks() ([]Block, bool) {
+func (a *BlockArray) grow() {
+	newCap := a.cap * 2
+	newData := make([]Block, newCap)
+	for i := 0; i < a.size; i++ {
+		newData[i] = a.data[i]
+	}
+	a.data = newData
+	a.cap = newCap
+}
+
+func (a *BlockArray) push(b Block) {
+	if a.size >= a.cap {
+		a.grow()
+	}
+	a.data[a.size] = b
+	a.size++
+}
+
+func (a *BlockArray) get(i int) Block      { return a.data[i] }
+func (a *BlockArray) set(i int, b Block)   { a.data[i] = b }
+func (a *BlockArray) len() int             { return a.size }
+func (a *BlockArray) swap(i, j int) {
+	a.data[i], a.data[j] = a.data[j], a.data[i]
+}
+
+func less(a, b Block) bool {
+	if a.w != b.w {
+		return a.w > b.w
+	}
+	return a.h > b.h
+}
+
+func quickSort(arr *BlockArray, lo, hi int) {
+	if lo >= hi {
+		return
+	}
+	pivot := arr.get((lo + hi) / 2)
+	i, j := lo, hi
+	for i <= j {
+		for less(arr.get(i), pivot) {
+			i++
+		}
+		for less(pivot, arr.get(j)) {
+			j--
+		}
+		if i <= j {
+			arr.swap(i, j)
+			i++
+			j--
+		}
+	}
+	quickSort(arr, lo, j)
+	quickSort(arr, i, hi)
+}
+
+func readBlocks() (*BlockArray, bool) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Введите количество блоков: ")
 	line, _ := reader.ReadString('\n')
 	line = strings.TrimSpace(line)
-
 	if line == "" {
 		fmt.Println("Error: empty input")
 		return nil, false
@@ -40,47 +100,44 @@ func readBlocks() ([]Block, bool) {
 		return nil, false
 	}
 
-	blocks := make([]Block, n)
+	blocks := newBlockArray(n)
 	fmt.Println("Введите ширину и высоту каждого блока (через пробел):")
-
 	for i := 0; i < n; i++ {
 		line, _ := reader.ReadString('\n')
 		line = strings.TrimSpace(line)
 		if line == "" {
-			fmt.Println("Error: empty line for block data")
+			fmt.Println("Error: empty line")
 			return nil, false
 		}
-
 		parts := strings.Fields(line)
 		if len(parts) != 2 {
-			fmt.Println("Error: invalid block data format")
+			fmt.Println("Error: invalid format")
 			return nil, false
 		}
-
-		w, err1 := strconv.Atoi(parts[0])
-		h, err2 := strconv.Atoi(parts[1])
-
-		if err1 != nil || err2 != nil || w <= 0 || h <= 0 {
-			fmt.Println("Error: block dimensions must be positive")
+		w, e1 := strconv.Atoi(parts[0])
+		h, e2 := strconv.Atoi(parts[1])
+		if e1 != nil || e2 != nil || w <= 0 || h <= 0 {
+			fmt.Println("Error: dimensions must be positive")
 			return nil, false
 		}
-		blocks[i] = Block{w: w, h: h}
+		blocks.push(Block{w: w, h: h})
 	}
 	return blocks, true
 }
 
-func calculateHeight(blocks []Block) uint64 {
-	sortBlocks(blocks)
-	var totalHeight uint64 = 0
-	lastWidth := 2147483647
+func calculateHeight(blocks *BlockArray) uint64 {
+	quickSort(blocks, 0, blocks.len()-1)
 
-	for _, b := range blocks {
+	var total uint64 = 0
+	lastWidth := int(^uint(0) >> 1) // MaxInt
+	for i := 0; i < blocks.len(); i++ {
+		b := blocks.get(i)
 		if b.w < lastWidth {
-			totalHeight += uint64(b.h)
+			total += uint64(b.h)
 			lastWidth = b.w
 		}
 	}
-	return totalHeight
+	return total
 }
 
 func main() {
@@ -88,7 +145,5 @@ func main() {
 	if !ok {
 		return
 	}
-
-	height := calculateHeight(blocks)
-	fmt.Printf("Максимальная высота пирамиды: %d\n", height)
+	fmt.Printf("Максимальная высота пирамиды: %d\n", calculateHeight(blocks))
 }
